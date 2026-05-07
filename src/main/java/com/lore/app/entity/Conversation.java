@@ -51,7 +51,6 @@ public class Conversation {
     @Builder.Default
     private int outputTokens = 0;
 
-    @CreationTimestamp
     @Column(name = "captured_at", nullable = false, updatable = false)
     private LocalDateTime capturedAt;
 

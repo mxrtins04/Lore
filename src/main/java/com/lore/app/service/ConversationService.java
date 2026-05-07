@@ -46,6 +46,7 @@ public class ConversationService {
                 .title(request.getTitle())
                 .inputTokens(request.getInputTokens())
                 .outputTokens(request.getOutputTokens())
+                .capturedAt(java.time.LocalDateTime.now())
                 .build();
 
         request.getMessages().forEach(m -> {
@@ -112,7 +113,6 @@ public class ConversationService {
                 .inputTokens(conversation.getInputTokens())
                 .outputTokens(conversation.getOutputTokens())
                 .capturedAt(conversation.getCapturedAt())
-                .bucketId(conversation.getStandardBucket() != null ? conversation.getStandardBucket().getId() : null)
                 .build();
     }
 
