@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-LoreApplication<lore>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.lore.app.LoreApplication",
+            "projectName": "lore",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
