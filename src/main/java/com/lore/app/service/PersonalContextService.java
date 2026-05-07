@@ -36,11 +36,13 @@ public class PersonalContextService {
             context = PersonalContext.builder()
                     .content(request.getContent())
                     .version(1)
+                    .updatedAt(java.time.LocalDateTime.now())
                     .build();
         } else {
             context = contexts.get(0);
             context.setContent(request.getContent());
             context.setVersion(context.getVersion() + 1);
+            context.setUpdatedAt(java.time.LocalDateTime.now());
         }
 
         return mapToResponse(personalContextRepository.save(context));
