@@ -32,6 +32,7 @@ public class GenerationService {
 
     @Transactional
     public GenerationResponse generatePost(GeneratePostRequest request) {
+        log.info("Using Gemini API key starting with: {}", geminiApiKey != null ? geminiApiKey.substring(0, 8) : "NULL");
         log.info("Generating post for platform: {}", request.getPostPlatform());
 
         // STEP 1 - COLLECT CONVERSATIONS
@@ -147,23 +148,27 @@ public class GenerationService {
     }
 
     private Map<String, Object> callGeminiApi(String prompt) {
-        Map<String, Object> part = new HashMap<>();
-        part.put("text", prompt);
+    Map<String, Object> part = new HashMap<>();
+    part.put("text", prompt);
 
-        Map<String, Object> content = new HashMap<>();
-        content.put("parts", List.of(part));
+    Map<String, Object> content = new HashMap<>();
+    content.put("parts", List.of(part));
 
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("contents", List.of(content));
+    Map<String, Object> requestBody = new HashMap<>();
+    requestBody.put("contents", List.of(content));
 
-        return webClient.post()
-                .uri(uriBuilder -> uriBuilder.queryParam("key", geminiApiKey).build())
-                .bodyValue(requestBody)
-                .retrieve()
-                .bodyToMono(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {
-                })
-                .block();
-    }
+    return webClient.post()
+            .bodyValue(requestBody)
+            .retrieve()
+            .onStatus(status -> status.is4xxClientError(), response ->
+                response.bodyToMono(String.class)
+                    .doOnNext(body -> log.error("Gemini 4xx error body: {}", body))
+                    .flatMap(body -> reactor.core.publisher.Mono.error(
+                        new RuntimeException("Gemini API error: " + body)))
+            )
+            .bodyToMono(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {})
+            .block();
+}
 
     @SuppressWarnings("unchecked")
     private String parseOutput(Map<String, Object> response) {
