@@ -21,7 +21,7 @@ Captures conversations from AI platforms (Claude, ChatGPT), organizes them into 
 - PostgreSQL
 - A Gemini API key from https://aistudio.google.com
 
-## Setup
+## Setup(Not yet deployed)
 
 ### 1. Create the database
 
