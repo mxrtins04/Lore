@@ -39,10 +39,11 @@ function loadCapturedConversation() {
       let title = "Untitled Conversation";
       const body = capturedConversation.body;
 
-      if (body.metadata && body.metadata.title) {
+      if (body.title) {
+        title = body.title;
+      } else if (body.metadata && body.metadata.title) {
         title = body.metadata.title;
       } else if (detectPlatform(capturedConversation.url) === "CLAUDE") {
-        // Fallback for Claude if no title in metadata
         title = "Claude Conversation";
       }
 
@@ -126,13 +127,13 @@ async function saveConversation() {
         role: msg.role.toUpperCase(),
         content: content,
         timestamp: null,
-        orderIndex: index
+        orderIndex: msg.orderIndex !== undefined ? msg.orderIndex : index
       };
     });
 
     const requestBody = {
       platform: platform,
-      platformConvoId: detectPlatformConvoId(capturedConversation.pageUrl),
+      platformConvoId: capturedConversation.body.conversationId || detectPlatformConvoId(capturedConversation.pageUrl),
       projectId: detectProjectId(capturedConversation.pageUrl),
       projectName: null,
       title: document.getElementById("convo-title").textContent,
