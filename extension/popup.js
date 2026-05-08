@@ -43,7 +43,7 @@ function loadCapturedConversation() {
         title = body.title;
       } else if (body.metadata && body.metadata.title) {
         title = body.metadata.title;
-      } else if (detectPlatform(capturedConversation.url) === "CLAUDE") {
+      } else if (detectPlatform(capturedConversation.url, capturedConversation.pageUrl) === "CLAUDE") {
         title = "Claude Conversation";
       }
 
@@ -53,11 +53,15 @@ function loadCapturedConversation() {
   });
 }
 
-function detectPlatform(url) {
-  if (url.includes("anthropic.com")) return "CLAUDE";
-  if (url.includes("openai.com")) return "CHATGPT";
-  if (url.includes("googleapis.com")) return "GEMINI";
-  return "CLAUDE";
+function detectPlatform(url, pageUrl) {
+  if (url.includes('anthropic.com') || 
+      (pageUrl && pageUrl.includes('claude.ai'))) return 'CLAUDE';
+  if (url.includes('openai.com') || 
+      url.includes('chatgpt.com') || 
+      (pageUrl && pageUrl.includes('chatgpt.com'))) return 'CHATGPT';
+  if (url.includes('googleapis.com') || 
+      (pageUrl && pageUrl.includes('gemini.google.com'))) return 'GEMINI';
+  return 'CLAUDE';
 }
 
 function detectPlatformConvoId(pageUrl) {
@@ -111,7 +115,7 @@ async function saveConversation() {
   statusEl.textContent = "";
 
   try {
-    const platform = detectPlatform(capturedConversation.url);
+    const platform = detectPlatform(capturedConversation.url, capturedConversation.pageUrl);
     const messages = capturedConversation.body.messages.map((msg, index) => {
       let content = "";
       if (typeof msg.content === "string") {

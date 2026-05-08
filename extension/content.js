@@ -72,26 +72,22 @@ console.log('Lore content script loaded');
 
                                 const convoId = urlString.split('/').pop().split('?')[0];
 
-                                try {
-                                    if (typeof chrome !== 'undefined' && chrome.runtime) {
-                                        chrome.runtime.sendMessage({
-                                            type: 'CONVERSATION_CAPTURED',
-                                            payload: {
-                                                url: urlString,
-                                                body: {
-                                                    title: data.title,
-                                                    messages: messages,
-                                                    conversationId: convoId
-                                                },
-                                                timestamp: new Date().toISOString(),
-                                                pageUrl: window.location.href
-                                            }
-                                        });
+                                window.dispatchEvent(new CustomEvent('LORE_CONVERSATION_CAPTURED', {
+                                    detail: {
+                                        type: 'CONVERSATION_CAPTURED',
+                                        payload: {
+                                            url: urlString,
+                                            body: {
+                                                title: data.title,
+                                                messages: messages,
+                                                conversationId: convoId
+                                            },
+                                            timestamp: new Date().toISOString(),
+                                            pageUrl: window.location.href
+                                        }
                                     }
-                                } catch (e) {
-                                    console.log('Lore: sendMessage failed', e);
-                                }
-                                console.log('Lore: ChatGPT conversation processed and sent');
+                                }));
+                                console.log('Lore: ChatGPT conversation processed and dispatched');
                             }
                         } catch (err) {
                             console.error('Lore: Error processing ChatGPT GET response', err);
@@ -122,21 +118,17 @@ console.log('Lore content script loaded');
                         const parsedBody = JSON.parse(bodyText);
                         if (parsedBody.messages && parsedBody.messages.length > 0) {
                             console.log('Lore: conversation found (standard format)');
-                        try {
-                            if (typeof chrome !== 'undefined' && chrome.runtime) {
-                                chrome.runtime.sendMessage({
-                                    type: 'CONVERSATION_CAPTURED',
-                                    payload: {
-                                        url: urlString,
-                                        body: parsedBody,
-                                        timestamp: new Date().toISOString(),
-                                        pageUrl: window.location.href
-                                    }
-                                });
+                        window.dispatchEvent(new CustomEvent('LORE_CONVERSATION_CAPTURED', {
+                            detail: {
+                                type: 'CONVERSATION_CAPTURED',
+                                payload: {
+                                    url: urlString,
+                                    body: parsedBody,
+                                    timestamp: new Date().toISOString(),
+                                    pageUrl: window.location.href
+                                }
                             }
-                        } catch (e) {
-                            console.log('Lore: sendMessage failed', e);
-                        }
+                        }));
                         }
                     }
                 }
