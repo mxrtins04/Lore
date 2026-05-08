@@ -16,7 +16,7 @@ import java.util.UUID;
 @Builder
 public class StandardBucket {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(nullable = false)

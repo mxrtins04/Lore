@@ -19,7 +19,7 @@ import java.util.UUID;
 @Builder
 public class Conversation {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Enumerated(EnumType.STRING)
@@ -55,8 +55,11 @@ public class Conversation {
     private LocalDateTime capturedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "bucket_id")
+    @JoinColumn(name = "bucket_id", insertable = false, updatable = false)
     private StandardBucket standardBucket;
+
+    @Column(name = "bucket_id")
+    private UUID bucketId;
 
     public void addMessage(Message message) {
         messages.add(message);

@@ -77,16 +77,17 @@ public class ConversationService {
     }
 
     @Transactional
-    public ConversationResponse assignToBucket(UUID conversationId, UUID bucketId) {
-        Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new ResourceNotFoundException("Conversation not found with id: " + conversationId));
-        
-        StandardBucket bucket = standardBucketRepository.findById(bucketId)
-                .orElseThrow(() -> new ResourceNotFoundException("Standard bucket not found with id: " + bucketId));
+public ConversationResponse assignToBucket(UUID conversationId, UUID bucketId) {
+    Conversation conversation = conversationRepository.findById(conversationId)
+            .orElseThrow(() -> new ResourceNotFoundException("Conversation not found with id: " + conversationId));
+    
+    standardBucketRepository.findById(bucketId)
+            .orElseThrow(() -> new ResourceNotFoundException("Standard bucket not found with id: " + bucketId));
 
-        conversation.setStandardBucket(bucket);
-        return mapToResponse(conversationRepository.save(conversation));
-    }
+    conversation.setBucketId(bucketId);
+    
+    return mapToResponse(conversationRepository.saveAndFlush(conversation));
+}
 
     @Transactional
     public void deleteConversation(UUID id) {
@@ -112,6 +113,7 @@ public class ConversationService {
                 .title(conversation.getTitle())
                 .inputTokens(conversation.getInputTokens())
                 .outputTokens(conversation.getOutputTokens())
+                .bucketId(conversation.getBucketId())
                 .capturedAt(conversation.getCapturedAt())
                 .build();
     }
