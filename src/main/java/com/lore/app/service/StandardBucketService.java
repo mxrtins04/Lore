@@ -75,11 +75,13 @@ public class StandardBucketService {
     }
 
     private StandardBucketResponse mapToResponse(StandardBucket bucket) {
+        Integer conversationCount = conversationRepository.countByStandardBucket_Id(bucket.getId());
         return StandardBucketResponse.builder()
                 .id(bucket.getId())
                 .name(bucket.getName())
                 .description(bucket.getDescription())
                 .createdAt(bucket.getCreatedAt())
+                .conversationCount(conversationCount)
                 .build();
     }
 }

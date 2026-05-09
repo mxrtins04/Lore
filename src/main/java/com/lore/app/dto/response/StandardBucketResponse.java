@@ -14,4 +14,5 @@ public class StandardBucketResponse {
     private String name;
     private String description;
     private LocalDateTime createdAt;
+    private Integer conversationCount;
 }
