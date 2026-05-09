@@ -1,3 +1,5 @@
+// Copyright (c) 2026 mxrtins04
+// https://github.com/mxrtins04
 import axios from 'axios';
 
 const api = axios.create({

@@ -1,3 +1,5 @@
+// Copyright (c) 2026 mxrtins04
+// https://github.com/mxrtins04
 const BACKEND_URL = "http://localhost:8080";
 let capturedConversation = null;
 

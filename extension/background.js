@@ -1,3 +1,5 @@
+// Copyright (c) 2026 mxrtins04
+// https://github.com/mxrtins04
 let lastCapturedConversation = null;
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

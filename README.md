@@ -2,6 +2,8 @@
 
 A personal AI conversation aggregation and post generation tool.
 
+**Created by:** [@mxrtins04](https://github.com/mxrtins04)
+
 ## What it does
 
 Captures conversations from AI platforms (Claude, ChatGPT), organizes them into buckets. These buckets could be customized to give LLM's more wholeistic context to generate content more relevant to the user's needs.

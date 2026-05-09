@@ -1,3 +1,5 @@
+// Copyright (c) 2026 mxrtins04
+// https://github.com/mxrtins04
 console.log('Lore content script loaded');
 (function() {
     const originalFetch = window.fetch.bind(window);

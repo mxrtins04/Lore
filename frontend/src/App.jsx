@@ -1,3 +1,5 @@
+// Copyright (c) 2026 mxrtins04
+// https://github.com/mxrtins04
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 

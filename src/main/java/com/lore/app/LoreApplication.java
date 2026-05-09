@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 mxrtins04
+ * https://github.com/mxrtins04
+ */
 package com.lore.app;
 
 import org.springframework.boot.SpringApplication;
