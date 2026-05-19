@@ -1,7 +1,5 @@
 package com.lore.app.dto.request;
 
-import com.lore.app.enums.ContentMode;
-import com.lore.app.enums.PostPlatform;
 import lombok.*;
 
 import java.util.List;
@@ -11,12 +9,11 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class GeneratePostRequest {
-    private PostPlatform postPlatform;
+public class CvGenerationRequest {
     private List<UUID> bucketIds;
     private List<String> bucketTypes;
     private boolean includePersonalContext;
-    private ContentMode contentMode;
+    private String githubUsername;
 
     public List<UUID> getBucketIds() {
         return bucketIds != null ? bucketIds : List.of();

@@ -35,8 +35,15 @@ public class ConversationController {
     }
 
     @PatchMapping("/{id}/bucket")
-    public ResponseEntity<ConversationResponse> assignToBucket(@PathVariable UUID id, @RequestBody AssignBucketRequest request) {
+    public ResponseEntity<ConversationResponse> assignToBucket(@PathVariable UUID id,
+            @RequestBody AssignBucketRequest request) {
         return ResponseEntity.ok(conversationService.assignToBucket(id, request.getBucketId()));
+    }
+
+    @GetMapping("/by-platform-id")
+    public ResponseEntity<ConversationDetailResponse> getConversationByPlatformId(
+            @RequestParam String platformConvoId) {
+        return ResponseEntity.ok(conversationService.getConversationByPlatformId(platformConvoId));
     }
 
     @DeleteMapping("/{id}")

@@ -8,17 +8,96 @@ console.log('Lore content script loaded');
     let lastClaudeConversationId = null;
     let claudeNavCaptureTimer = null;
 
-    const dispatchCapturedConversation = (payload) => {
-        window.dispatchEvent(new CustomEvent('LORE_CONVERSATION_CAPTURED', {
-            detail: {
-                type: 'CONVERSATION_CAPTURED',
-                payload
+    const recentDispatches = new Set();
+
+    const notebookLMHistory = new Map(); // notebookId -> messages[]
+
+    const extractNotebookLMAssistantText = (inner) => {
+        try {
+            // Shape: [[[["<id>", <ts>, 2, null, [["<assistantText>", ...]] ]]]]
+            if (Array.isArray(inner) && Array.isArray(inner[0]) && Array.isArray(inner[0][0])) {
+                const payload = inner[0][0];
+
+                if (payload && typeof payload[0] === 'string' && payload[0] === 'NoteGen') {
+                    return '';
+                }
+
+                if (
+                    Array.isArray(payload[4]) &&
+                    Array.isArray(payload[4][0]) &&
+                    typeof payload[4][0][0] === 'string'
+                ) {
+                    return payload[4][0][0];
+                }
+
+                // Shape: [[["<assistantText>", ...]]]
+                if (typeof payload[0] === 'string') {
+                    return payload[0];
+                }
+
+                // Shape: [[[ ["<assistantText>", ...] ]]]
+                if (Array.isArray(payload[0]) && typeof payload[0][0] === 'string') {
+                    return payload[0][0];
+                }
             }
-        }));
+
+            // Shape: [[["<assistantText>", ...]]]
+            if (Array.isArray(inner) && Array.isArray(inner[0]) && Array.isArray(inner[0][0]) && typeof inner[0][0][0] === 'string') {
+                if (inner[0][0][0] === 'NoteGen') return '';
+                return inner[0][0][0];
+            }
+        } catch (_) {
+            // Fail silently
+        }
+
+        return '';
     };
+
+    const extractNotebookLMUserText = (capturedRequestBody) => {
+        try {
+            if (!capturedRequestBody || typeof capturedRequestBody !== 'string') return '';
+
+            const matches = [...capturedRequestBody.matchAll(/\"([^\"]{5,2000})\"/g)]
+                .map(m => (m && m[1] ? m[1] : ''))
+                .map(s => s.trim())
+                .filter(Boolean)
+                .filter(s => s.length >= 5)
+                .filter(s => s.length <= 2000)
+                .filter(s => !s.includes('rpcids='))
+                .filter(s => !s.includes('source-path='))
+                .filter(s => !s.startsWith('http'))
+                .filter(s => s.split(' ').length >= 2);
+
+            if (!matches.length) return '';
+
+            // Prefer the longest human-looking string.
+            matches.sort((a, b) => b.length - a.length);
+            return matches[0];
+        } catch (_) {
+            return '';
+        }
+    };
+
+
+    const dispatchCapturedConversation = (payload) => {
+        // postMessage crosses MAIN → ISOLATED boundary
+        window.postMessage({
+            source: 'LORE_EXTENSION',
+            type: 'CONVERSATION_CAPTURED',
+            payload
+        }, '*');
+    };
+
 
     const processClaudeConversationData = (data, urlString) => {
         if (!data || !Array.isArray(data.chat_messages)) return false;
+
+        const convoId = data.uuid;
+        if (convoId) {
+            if (recentDispatches.has(convoId)) return false;
+            recentDispatches.add(convoId);
+            setTimeout(() => recentDispatches.delete(convoId), 2000);
+        }
 
         const messages = data.chat_messages
             .map((msg, index) => {
@@ -111,24 +190,30 @@ console.log('Lore content script loaded');
 
         window.addEventListener('popstate', notify);
 
-        const originalPushState = history.pushState;
-        history.pushState = function(...args) {
-            const ret = originalPushState.apply(this, args);
-            notify();
-            return ret;
-        };
+        if (!history.pushState.__loreClaudePatched) {
+            const originalPushState = history.pushState;
+            history.pushState = function(...args) {
+                const ret = originalPushState.apply(this, args);
+                notify();
+                return ret;
+            };
+            history.pushState.__loreClaudePatched = true;
+        }
 
-        const originalReplaceState = history.replaceState;
-        history.replaceState = function(...args) {
-            const ret = originalReplaceState.apply(this, args);
-            notify();
-            return ret;
-        };
+        if (!history.replaceState.__loreClaudePatched) {
+            const originalReplaceState = history.replaceState;
+            history.replaceState = function(...args) {
+                const ret = originalReplaceState.apply(this, args);
+                notify();
+                return ret;
+            };
+            history.replaceState.__loreClaudePatched = true;
+        }
 
         notify();
     };
 
-    patchHistoryForClaudeNav();
+    if (window.location.origin === 'https://claude.ai') { patchHistoryForClaudeNav(); }
 
     const descriptor = {
         value: async function(...args) {
@@ -156,6 +241,8 @@ console.log('Lore content script loaded');
             const isTelemetry = urlString.includes('datadoghq.com') || 
                                urlString.includes('ces/') || 
                                urlString.includes('sentinel/') ||
+                               urlString.includes('analytics.google.com') ||
+                               urlString.includes('play.google.com') ||
                                urlString.includes('list_accessible') ||
                                urlString.includes('celsius/') ||
                                urlString.includes('/lat/r') ||
@@ -219,6 +306,12 @@ console.log('Lore content script loaded');
                                     });
 
                                 const convoId = urlString.split('/').pop().split('?')[0];
+
+                                if (convoId) {
+                                    if (recentDispatches.has(convoId)) return;
+                                    recentDispatches.add(convoId);
+                                    setTimeout(() => recentDispatches.delete(convoId), 2000);
+                                }
 
                                 window.dispatchEvent(new CustomEvent('LORE_CONVERSATION_CAPTURED', {
                                     detail: {
@@ -322,6 +415,136 @@ console.log('Lore content script loaded');
         writable: true,
         configurable: true
     };
+
+    const OriginalXHR = window.XMLHttpRequest;
+    function PatchedXHR() {
+        const xhr = new OriginalXHR();
+        let capturedUrl = '';
+        let capturedRequestBody = '';
+
+        const originalOpen = xhr.open.bind(xhr);
+        xhr.open = function(method, url, ...rest) {
+            capturedUrl = typeof url === 'string' ? url : '';
+            console.log('Lore: NLM XHR open called:', capturedUrl);
+            return originalOpen(method, url, ...rest);
+        };
+
+        const originalSend = xhr.send.bind(xhr);
+        xhr.send = function(body) {
+            try {
+                if (capturedUrl.includes('batchexecute')) {
+                    capturedRequestBody = typeof body === 'string' ? body : '';
+                }
+            } catch (_) {
+                // Fail silently
+            }
+            return originalSend(body);
+        };
+
+        xhr.addEventListener('readystatechange', function() {
+            // Step 1: exit if not complete
+            if (xhr.readyState !== 4) return;
+
+            // Step 2: exit if not a batchexecute call
+            if (!capturedUrl.includes('batchexecute')) return;
+
+            const rpcid = capturedUrl.split('rpcids=')[1]?.split('&')[0];
+
+            // Handle history rpcid (ub2Bae) - full conversation backfill
+            if (rpcid === 'ub2Bae') {
+                try {
+                    const rawText = xhr.responseText;
+                    const chunks = rawText.split('\n').filter(line => line.includes('wrb.fr'));
+                    if (!chunks.length) return;
+
+                    const lastChunk = chunks[chunks.length - 1].trim();
+                    const jsonStart = lastChunk.indexOf('[');
+                    if (jsonStart === -1) return;
+
+                    const outer = JSON.parse(lastChunk.slice(jsonStart));
+                    const innerStr = outer[0][2];
+                    if (!innerStr) return;
+
+                    const inner = JSON.parse(innerStr);
+
+                    // DEBUG: log full structure to find current notebook messages
+                    console.log('Lore: ub2Bae inner structure:', JSON.stringify(inner).slice(0, 2000));
+
+                    const notebookIdMatch = window.location.pathname.match(/\/notebook\/([^/?]+)/);
+                    const notebookId = notebookIdMatch ? notebookIdMatch[1] : 'unknown';
+                    console.log('Lore: current notebookId:', notebookId);
+
+                    return;
+                } catch (err) {
+                    console.error('Lore: Error processing NotebookLM history', err);
+                }
+                return;
+            }
+
+            // Step 3: exit if not the AI response rpcid
+            if (rpcid !== 'khqZz') return;
+
+            // Step 4: parse and dispatch streaming response
+            try {
+                const rawText = xhr.responseText;
+                const chunks = rawText.split('\n').filter(line => line.includes('wrb.fr'));
+                if (!chunks.length) return;
+
+                const lastChunk = chunks[chunks.length - 1].trim();
+                const jsonStart = lastChunk.indexOf('[');
+                if (jsonStart === -1) return;
+
+                const outer = JSON.parse(lastChunk.slice(jsonStart));
+                const innerStr = outer[0][2];
+                if (!innerStr) return;
+
+                const inner = JSON.parse(innerStr);
+                const assistantText = inner?.[0]?.[0]?.[4]?.[0]?.[0];
+                if (!assistantText || typeof assistantText !== 'string') return;
+
+                let userText = '';
+                try {
+                    const match = capturedRequestBody.match(/"([^"]{10,500})"/);
+                    if (match) userText = match[1];
+                } catch (_) {}
+
+                const notebookIdMatch = window.location.pathname.match(/\/notebook\/([^/?]+)/);
+                const notebookId = notebookIdMatch ? notebookIdMatch[1] : 'unknown';
+
+                const rawTitle = document.title || 'NotebookLM Conversation';
+                const title = rawTitle.replace(/\s*[-|]\s*NotebookLM\s*$/i, '').trim() || 'NotebookLM Conversation';
+
+                const existingMessages = notebookLMHistory.get(notebookId) || [];
+
+                const lastMsg = existingMessages[existingMessages.length - 1];
+                if (lastMsg && lastMsg.role === 'ASSISTANT' && lastMsg.content === assistantText) return;
+
+                const newMessages = [];
+                if (userText) {
+                    newMessages.push({ role: 'USER', content: userText, orderIndex: existingMessages.length });
+                }
+                newMessages.push({ role: 'ASSISTANT', content: assistantText, orderIndex: existingMessages.length + (userText ? 1 : 0) });
+
+                const fullHistory = [...existingMessages, ...newMessages];
+                notebookLMHistory.set(notebookId, fullHistory);
+
+                dispatchCapturedConversation({
+                    url: capturedUrl,
+                    body: { title, messages: fullHistory, conversationId: notebookId },
+                    timestamp: new Date().toISOString(),
+                    pageUrl: window.location.href
+                });
+
+                console.log(`Lore: NotebookLM conversation captured (${fullHistory.length} messages)`);
+            } catch (err) {
+                console.error('Lore: Error processing NotebookLM response', err);
+            }
+        });
+
+        return xhr;
+    }
+    PatchedXHR.prototype = OriginalXHR.prototype;
+    window.XMLHttpRequest = PatchedXHR;
 
     Object.defineProperty(window, 'fetch', descriptor);
 })();

@@ -30,11 +30,12 @@ public class ConversationService {
     @Transactional
     public ConversationResponse captureConversation(CaptureConversationRequest request) {
         log.info("Capturing conversation: {}", request.getTitle());
-        
+
         if (request.getPlatformConvoId() != null) {
             conversationRepository.findByPlatformConvoId(request.getPlatformConvoId())
                     .ifPresent(c -> {
-                        throw new IllegalArgumentException("Conversation with platform ID " + request.getPlatformConvoId() + " already exists.");
+                        throw new IllegalArgumentException(
+                                "Conversation with platform ID " + request.getPlatformConvoId() + " already exists.");
                     });
         }
 
@@ -72,22 +73,22 @@ public class ConversationService {
     public ConversationDetailResponse getConversationById(UUID id) {
         Conversation conversation = conversationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Conversation not found with id: " + id));
-        
+
         return mapToDetailResponse(conversation);
     }
 
     @Transactional
-public ConversationResponse assignToBucket(UUID conversationId, UUID bucketId) {
-    Conversation conversation = conversationRepository.findById(conversationId)
-            .orElseThrow(() -> new ResourceNotFoundException("Conversation not found with id: " + conversationId));
-    
-    standardBucketRepository.findById(bucketId)
-            .orElseThrow(() -> new ResourceNotFoundException("Standard bucket not found with id: " + bucketId));
+    public ConversationResponse assignToBucket(UUID conversationId, UUID bucketId) {
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Conversation not found with id: " + conversationId));
 
-    conversation.setBucketId(bucketId);
-    
-    return mapToResponse(conversationRepository.saveAndFlush(conversation));
-}
+        standardBucketRepository.findById(bucketId)
+                .orElseThrow(() -> new ResourceNotFoundException("Standard bucket not found with id: " + bucketId));
+
+        conversation.setBucketId(bucketId);
+
+        return mapToResponse(conversationRepository.saveAndFlush(conversation));
+    }
 
     @Transactional
     public void deleteConversation(UUID id) {
@@ -101,6 +102,13 @@ public ConversationResponse assignToBucket(UUID conversationId, UUID bucketId) {
         return conversationRepository.findByStandardBucket_Id(bucketId).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
+    }
+
+    public ConversationDetailResponse getConversationByPlatformId(String platformConvoId) {
+        Conversation conversation = conversationRepository.findByPlatformConvoId(platformConvoId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Conversation not found with platformConvoId: " + platformConvoId));
+        return mapToDetailResponse(conversation);
     }
 
     public ConversationResponse mapToResponse(Conversation conversation) {

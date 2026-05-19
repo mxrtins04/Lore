@@ -47,6 +47,8 @@ function loadCapturedConversation() {
         title = body.metadata.title;
       } else if (detectPlatform(capturedConversation.url, capturedConversation.pageUrl) === "CLAUDE") {
         title = "Claude Conversation";
+      } else if (detectPlatform(capturedConversation.url, capturedConversation.pageUrl) === "NOTEBOOKLM") {
+        title = "NotebookLM Conversation";
       }
 
       titleEl.textContent = title;
@@ -63,6 +65,7 @@ function detectPlatform(url, pageUrl) {
       (pageUrl && pageUrl.includes('chatgpt.com'))) return 'CHATGPT';
   if (url.includes('googleapis.com') || 
       (pageUrl && pageUrl.includes('gemini.google.com'))) return 'GEMINI';
+  if ((pageUrl && pageUrl.includes('notebooklm.google.com'))) return 'NOTEBOOKLM';
   return 'CLAUDE';
 }
 
@@ -154,7 +157,38 @@ async function saveConversation() {
       body: JSON.stringify(requestBody)
     });
 
-    if (!response.ok) throw new Error("Failed to save conversation");
+    if (!response.ok) {
+        if (response.status === 400) {
+            const errBody = await response.json();
+            if (errBody.error && errBody.error.includes("already exists")) {
+                // Conversation exists — fetch it by platformConvoId to get its ID
+                const searchResponse = await fetch(
+                    `${BACKEND_URL}/api/conversations/by-platform-id?platformConvoId=${encodeURIComponent(requestBody.platformConvoId)}` 
+                );
+                if (!searchResponse.ok) throw new Error("Failed to fetch existing conversation");
+                const existingConvo = await searchResponse.json();
+                
+                // Skip creation, go straight to bucket assignment using existing ID
+                const patchResponse = await fetch(
+                    `${BACKEND_URL}/api/conversations/${existingConvo.id}/bucket`,
+                    {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ bucketId: bucketId })
+                    }
+                );
+                if (!patchResponse.ok) {
+                    const errBody = await patchResponse.text();
+                    throw new Error(`Failed to assign bucket: ${patchResponse.status} - ${errBody}`);
+                }
+                statusEl.textContent = "Saved to Lore!";
+                statusEl.style.color = "#22c55e";
+                return;
+            }
+        }
+        const errBody = await response.text();
+        throw new Error(`Failed to save conversation: ${response.status} - ${errBody}`);
+    }
 
     const newConvo = await response.json();
 
@@ -165,7 +199,10 @@ async function saveConversation() {
       body: JSON.stringify({ bucketId: bucketId })
     });
 
-    if (!patchResponse.ok) throw new Error("Failed to assign bucket");
+    if (!patchResponse.ok) {
+        const errBody = await patchResponse.text();
+        throw new Error(`Failed to assign bucket: ${patchResponse.status} - ${errBody}`);
+    }
 
     statusEl.textContent = "Saved to Lore!";
     statusEl.style.color = "#22c55e";

@@ -1,5 +1,3 @@
-import { Github } from 'lucide-react';
-
 function Footer() {
   return (
     <footer className="mt-auto py-6 border-t border-border">
@@ -19,10 +17,9 @@ function Footer() {
           href="https://github.com/mxrtins04/Lore"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-2 text-text-muted hover:text-text-primary transition-colors"
+          className="text-text-muted hover:text-text-primary transition-colors"
         >
-          <Github size={16} />
-          <span>View on GitHub</span>
+          View on GitHub
         </a>
       </div>
     </footer>

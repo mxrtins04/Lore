@@ -1,0 +1,14 @@
+package com.lore.app.enums;
+
+public enum ContentMode {
+    LEARNING_LOG,
+    STRUGGLE_POST,
+    CAPABILITY_FLEX,
+    BUILD_LOG,
+    HOT_TAKE,
+    MISCONCEPTION_KILLER,
+    BEFORE_AFTER,
+    THE_DECISION,
+    UNSOLICITED_ADVICE,
+    PROJECT_SPOTLIGHT
+}
